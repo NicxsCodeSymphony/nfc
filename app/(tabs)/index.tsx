@@ -1,35 +1,65 @@
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Print from "expo-print";
 import React, { useState } from "react";
 import { Button, StyleSheet, Text, View } from "react-native";
-import QRCodeScanner from "react-native-qrcode-scanner";
 
-export default function App() {
-    const [scannedData, setScannedData] = useState(null);
+export default function HomeScreen() {
+    const [scannedData, setScannedData] = useState<string | null>(null);
     const [scanned, setScanned] = useState(false);
+    const [permission, requestPermission] = useCameraPermissions();
 
-    const onSuccess = (e) => {
-        setScannedData(e.data);
+    const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) => {
+        setScannedData(data);
         setScanned(true);
-        printData(e.data);
+        printData(data);
     };
 
-    const printData = async (data) => {
+    const printData = async (data: string) => {
         try {
             await Print.printAsync({
-                html: `<h1 style="text-align:center;">QR Code Data</h1><p>${data}</p>`,
+                html: `<h1 style="text-align:center;"></h1><p>${data}</p>`,
             });
         } catch (error) {
             console.error("Printing error:", error);
         }
     };
 
+    if (!permission) {
+        // Camera permissions are still loading
+        return <View style={styles.resultContainer}><Text>Loading camera permissions...</Text></View>;
+    }
+
+    if (!permission.granted) {
+        // Camera permissions are not granted yet
+        return (
+            <View style={styles.resultContainer}>
+                <Text style={{ textAlign: 'center', marginBottom: 20 }}>
+                    We need your permission to show the camera
+                </Text>
+                <Button onPress={requestPermission} title="Grant Permission" />
+            </View>
+        );
+    }
+
     return (
         <View style={{ flex: 1 }}>
             {!scanned ? (
-                <QRCodeScanner onRead={onSuccess} />
+                <CameraView
+                    style={StyleSheet.absoluteFillObject}
+                    facing="back"
+                    onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+                    barcodeScannerSettings={{
+                        barcodeTypes: ["qr", "pdf417"],
+                    }}
+                />
             ) : (
                 <View style={styles.resultContainer}>
-                    <Text>Scanned Data: {scannedData}</Text>
+                    <Text style={{ fontSize: 18, marginBottom: 20, textAlign: 'center' }}>
+                        Scanned Data:
+                    </Text>
+                    <Text style={{ fontSize: 16, marginBottom: 20, textAlign: 'center' }}>
+                        {scannedData}
+                    </Text>
                     <Button
                         title="Scan Again"
                         onPress={() => {
@@ -48,5 +78,6 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: "center",
         alignItems: "center",
+        padding: 20,
     },
 });
